@@ -18,8 +18,10 @@
   },
   "homepage": "https://github.com/ChinaBigPan/photoShare#readme",
   "dependencies": {
-    "apollo-server": "^2.3.1",
+    "apollo-server-express": "^2.3.3",
+    "express": "^4.16.4",
     "graphql": "^14.1.0",
+    "graphql-playground-middleware-express": "^1.7.10",
     "nodemon": "^1.18.9"
   }
 }
