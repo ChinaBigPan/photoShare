@@ -19,9 +19,12 @@
   "homepage": "https://github.com/ChinaBigPan/photoShare#readme",
   "dependencies": {
     "apollo-server-express": "^2.3.3",
+    "dotenv": "^6.2.0",
     "express": "^4.16.4",
     "graphql": "^14.1.0",
     "graphql-playground-middleware-express": "^1.7.10",
+    "mongodb": "^3.1.13",
+    "node-fetch": "^2.3.0",
     "nodemon": "^1.18.9"
   }
 }
