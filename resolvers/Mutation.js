@@ -1,10 +1,11 @@
-const { authorizeWithGithub } = require("../libs");
+const { authorizeWithGithub, uploadStream } = require("../libs");
 const fetch = require("node-fetch");
 const { ObjectID } = require("mongodb");
+const path = require("path");
 
 module.exports = {
     // 发布照片
-    async postPhoto(parent, args, { db, currentUser }) {
+    async postPhoto(parent, args, { db, currentUser, pubsub }) {
         if (!currentUser) {
             throw new Error("仅有授权用户才可发布照片");
         }
@@ -15,8 +16,17 @@ module.exports = {
             created: new Date()
         };
 
-        const { insertedIds } = await db.collection("photos").insert(newPhoto);
+        const { insertedIds } = await db
+            .collection("photos")
+            .insertOne(newPhoto);
         newPhoto.id = insertedIds[0];
+
+        var toPath = path.join(__dirname, "..", "assets", "photos", `${photo.id}.jpg`);
+
+        const { stream } = await args.input.file;
+        await uploadStream(stream, toPath);
+
+        pubsub.publish("photo-added", { newPhoto });
 
         return newPhoto;
     },
@@ -27,7 +37,7 @@ module.exports = {
         await db.collection("photos").findOne({ _id: ObjectID(args.photoID) });
     },
     // github授权
-    async githubAuth(parent, { code }, { db }) {
+    async githubAuth(parent, { code }, { db, pubsub }) {
         // 1.从Github获取数据
         let {
             message,
@@ -53,17 +63,20 @@ module.exports = {
         };
         // 4.根据新的信息新增或是更新记录
         const {
-            ops: [user]
+            ops: [user, result]
         } = await db
             .collection("users")
             .replaceOne({ githubLogin: login }, latestUserInfo, {
                 upsert: true
             });
+
+        result.upserted && pubsub.publish("user-added", { newUser: user });
+
         // 5.返回用户数据和token
         return { user, token: access_token };
     },
     // 添加虚假用户
-    async addFakeUsers(parent, { count }, { db }) {
+    async addFakeUsers(parent, { count }, { db, pubsub }) {
         var randomUserApi = `https://randomuser.me/api/?results=${count}`;
 
         var { results } = await fetch(randomUserApi).then(res => res.json());
@@ -75,7 +88,15 @@ module.exports = {
             githubToken: r.login.sha1
         }));
 
-        await db.collection("users").insert(users);
+        await db.collection("users").insertMany(users);
+        var newUsers = await db
+            .collection("users")
+            .find()
+            .sort({ _id: -1 })
+            .limit(count)
+            .toArray();
+
+        newUsers.forEach(newUser => pubsub.publish("user-added", { newUser }));
 
         return users;
     },

@@ -19,6 +19,11 @@ type Photo {
     created: DateTime!
 }
 
+type Subscription {
+    newPhoto: Photo!
+    newUser: User!
+}
+
 enum PhotoCategory {
     SELFIE
     PORTRAIT
@@ -31,6 +36,7 @@ input PostPhotoInput {
     name: String!
     category: PhotoCategory = PORTRAIT
     description: String
+    file: Upload!
 }
 
 type AuthPayload {
