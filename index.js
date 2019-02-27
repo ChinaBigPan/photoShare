@@ -5,9 +5,12 @@ const expressPlayground = require("graphql-playground-middleware-express")
 const { readFileSync } = require("fs");
 const typeDefs = readFileSync("./typeDefs.graphql", "UTF-8");
 const resolvers = require("./resolvers");
+const path = require("path");
 const { MongoClient } = require("mongodb");
 const dotenv = require("dotenv");
 const { createServer } = require("http");
+const depthLimit = require("graphql-depth-limit");
+const { createComplexityLimitRule } = require("graphql-validation-complexity");
 dotenv.config();
 
 // 1.创建异步函数（asynchronous）函数
@@ -34,6 +37,13 @@ async function start() {
     const server = new ApolloServer({
         typeDefs,
         resolvers,
+        engine: true,
+        validationRules: [
+            depthLimit(5),
+            createComplexityLimitRule(1000, {
+                onCost: cost => console.log("query cost: ", cost)
+            })
+        ],
         context: async ({ req, connection }) => {
             const githubToken = req
                 ? req.headers.authorization
@@ -61,9 +71,15 @@ async function start() {
         })
     );
 
+    app.use(
+        "/img/photos",
+        express.static(path.join(__dirname, "assets", "photos"))
+    );
+
     const port = 4000;
     const httpServer = createServer(app);
     server.installSubscriptionHandlers(httpServer);
+    httpServer.timeout = 5000;
     httpServer.listen({ port }, () =>
         console.log(
             `GraphQL 服务运行于 localhost:${port}, 地址为${server.graphqlPath}`
